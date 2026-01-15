@@ -27,11 +27,16 @@ This document outlines the branching strategy for managing deployments across mu
 
 ### Primary Branches
 
-#### 1. `main` Branch
+#### 1. `main` Branch (Trunk)
 - **Purpose**: Production-ready code (version n)
 - **Deploys to**: `BLD-stable-01` → `INT-stable-01` → `PRE-stable-01` → `PRD-stable-01`
 - **Protection**: Strict protection, requires PR reviews and CI/CD validation
-- **Merge Policy**: Only hotfixes and stable release merges allowed
+- **Merge Policy**: 
+  - ✅ Hotfixes (critical production fixes)
+  - ✅ Feature branches (trunk-based development for fast delivery)
+  - ✅ Release branch merges (when release/n+1 is ready for production)
+- **Trunk-Based Development**: Supports direct merges from feature branches for faster delivery
+- **Always Deployable**: `main` must always be in a deployable state
 
 #### 2. `release/n+1` Branch (Beta)
 - **Purpose**: Next release development (version n+1)
@@ -59,10 +64,18 @@ This document outlines the branching strategy for managing deployments across mu
 
 #### 5. `feature/*` Branches
 - **Purpose**: New feature development
-- **Source**: Created from appropriate release branch (`release/n+1` or `release/n+2`)
-- **Flow**: `release/n+1` → `feature/CORENGC-xxxx-feature-name` → `release/n+1` (via PR)
+- **Source**: Can be created from `main` (trunk-based) or release branches (`release/n+1` or `release/n+2`)
+- **Flow Options**:
+  - **Fast Track (Trunk-Based)**: `main` → `feature/CORENGC-xxxx-feature-name` → `main` (via PR) → Production
+    - For: Small, production-ready features (< 1 day development)
+    - Enables faster delivery to production
+  - **Release Track**: `release/n+1` → `feature/CORENGC-xxxx-feature-name` → `release/n+1` (via PR) → Beta → Production
+    - For: Large features, experimental work, features needing extended testing
 - **Naming**: `feature/CORENGC-1234-user-authentication`, `feature/CORENGC-5678-payment-integration`
   - Format: `feature/CORENGC-xxxx-description` (Jira ID required)
+- **Lifetime**: 
+  - Trunk-based: Hours to 1 day (short-lived)
+  - Release-based: Days to weeks (longer-term)
 
 #### 6. `develop/*` Branches (Optional)
 - **Purpose**: Integration branch for multiple features before merging to release branch
@@ -178,11 +191,13 @@ graph LR
 ## Branch Protection Rules
 
 ### `main` Branch
-- ✅ Require pull request reviews (minimum 2 approvals)
+- ✅ Require pull request reviews (minimum 1-2 approvals, depending on change size)
 - ✅ Require status checks to pass (all CI/CD pipelines)
 - ✅ Require branches to be up to date before merging
 - ✅ Restrict pushes (no direct pushes)
-- ✅ Require linear history (no merge commits, only squash/rebase)
+- ✅ Require linear history (squash/rebase preferred, merge commits allowed for trunk-based)
+- ✅ Fast CI/CD pipeline (< 10 minutes for trunk-based features)
+- ✅ Auto-deploy to BLD on merge (trunk-based workflow)
 
 ### `release/*` Branches
 - ✅ Require pull request reviews (minimum 1 approval)
@@ -222,6 +237,15 @@ graph LR
    - Run unit tests
    - Run linting
    - Optionally deploy to feature-specific test environment
+   - **If branch is from `main` (trunk-based)**: Prepare for fast merge to main
+   - **If branch is from `release/*`**: Standard release workflow
+
+6. **On Merge to `main` (Trunk-Based Features):**
+   - Trigger automatic deployment to `BLD-stable-01`
+   - Run full test suite (optimized for speed)
+   - Run security scans
+   - Auto-promote to `INT-stable-01` if tests pass
+   - Manual approval for `PRE-stable-01` → `PRD-stable-01`
 
 ### Environment Promotion
 
@@ -339,9 +363,10 @@ Consider using:
 - Ensure CI/CD passes before requesting review
 
 ### 4. Merge Strategies
-- **Squash and Merge**: For feature branches (clean history)
+- **Squash and Merge**: Preferred for trunk-based feature branches (clean history, fast delivery)
 - **Rebase and Merge**: For hotfix branches (linear history)
-- **Merge Commit**: Avoid for `main` branch (use squash/rebase)
+- **Merge Commit**: Allowed for trunk-based features when preserving branch context is useful
+- **Fast Merge**: Trunk-based features should merge quickly (< 1 day from creation)
 
 ### 5. Branch Lifecycle
 - Delete branches after merge (automated)
@@ -358,13 +383,24 @@ Consider using:
 5. Merge `hotfix/CORENGC-1234-critical-bug-fix` to `main`
 6. Cherry-pick to `release/n+1` and `release/n+2`
 
-### Scenario 2: New Feature for Next Release
+### Scenario 2a: Small Feature (Trunk-Based - Fast Track)
+1. Create `feature/CORENGC-5678-ui-improvement` from `main` (Jira ticket: CORENGC-5678)
+2. Develop small feature (hours to 1 day)
+3. Create PR: `feature/CORENGC-5678-ui-improvement` → `main`
+4. Review and merge to `main`
+5. Automatic deployment to `BLD-stable-01` → `INT-stable-01`
+6. Promote to `PRE-stable-01` → `PRD-stable-01` when ready
+7. **Result**: Feature in production same day or next day
+
+### Scenario 2b: Large Feature (Release Track)
 1. Create `feature/CORENGC-5678-new-payment-method` from `release/n+1` (Jira ticket: CORENGC-5678)
-2. Develop feature
+2. Develop feature over days/weeks
 3. Deploy to `BLD-beta-01` for testing
 4. Test in `INT-beta-01`
 5. Merge `feature/CORENGC-5678-new-payment-method` to `release/n+1`
 6. Promote `release/n+1` through beta environments
+7. Eventually merge `release/n+1` → `main` for production
+8. **Result**: Feature in production after 2-4 weeks of testing
 
 ### Scenario 3: Experimental Feature
 1. Create `feature/CORENGC-9012-experimental-ai` from `release/n+2` (Jira ticket: CORENGC-9012)
@@ -422,6 +458,32 @@ Track:
 - Merge conflict frequency
 - Deployment success rate
 
+## Release Orchestration Integration
+
+This branching strategy integrates seamlessly with release orchestration tools like **Harness**, **Spinnaker**, or **ArgoCD**:
+
+### Key Integration Points
+
+1. **Branch-to-Environment Mapping**: Clear mapping enables automated environment selection
+   - `main` → `BLD-stable-01` → `INT-stable-01` → `PRE-stable-01` → `PRD-stable-01`
+   - `release/n+1` → `BLD-beta-01` → `INT-beta-01` → `PRE-beta-01`
+   - `release/n+2` → `BLD-alpha-01` → `INT-alpha-01`
+
+2. **Dynamic Environment Creation**: New environments can be created based on branch patterns
+   - Pattern-based naming: `{LAYER}-{RELEASE_TYPE}-{INSTANCE}`
+   - Automatic creation when new release branches are created
+
+3. **Coordinated Multi-Service Releases**: Dependency-based deployment orchestration
+   - Services deploy in correct dependency order
+   - Automated promotion gates with manual approvals
+
+4. **Automated Promotion**: CI/CD pipelines automatically promote through environments
+   - BLD → INT: Automated (tests pass)
+   - INT → PRE: Manual approval (QA)
+   - PRE → PRD: Manual approval (Release manager)
+
+See **[RELEASE_ORCHESTRATION.md](./RELEASE_ORCHESTRATION.md)** for detailed integration guide with Harness and other orchestration tools.
+
 ## Conclusion
 
 This branching strategy provides:
@@ -433,6 +495,8 @@ This branching strategy provides:
 - ✅ Alignment with `main` branch as production source of truth
 - ✅ Service independence: each service repository operates independently
 - ✅ Cross-service coordination strategies for coordinated releases
+- ✅ Trunk-based development for faster delivery
+- ✅ Release orchestration integration for automated deployments
 
-The strategy balances flexibility for development with stability for production, ensuring that `main` always reflects what's deployed to production while allowing parallel development of future releases. Each service repository follows the same strategy, enabling consistency across the organization while maintaining service autonomy.
+The strategy balances flexibility for development with stability for production, ensuring that `main` always reflects what's deployed to production while allowing parallel development of future releases. Each service repository follows the same strategy, enabling consistency across the organization while maintaining service autonomy. Integration with release orchestration tools automates deployments and environment management, reducing manual effort and errors.
 
