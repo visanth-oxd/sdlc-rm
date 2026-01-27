@@ -4,7 +4,11 @@
 
 This document outlines the branching strategy for managing deployments across multiple environment layers (BLD, INT, PRE, PRD) with different release types (stable, beta, alpha) and multiple instances.
 
+**Strategic Approach**: **Trunk-based development** is our primary strategic capability, enabling continuous iterative code delivery. All features are developed and deployed through the `main` branch using short-lived feature branches, feature flags, and gradual rollout.
+
 **Architecture**: Each service has its own GitHub repository. All service repositories follow the same branching strategy independently, allowing for independent development and deployment cycles while maintaining consistency across the organization.
+
+**See [TRUNK_BASED_STRATEGY.md](./TRUNK_BASED_STRATEGY.md)** for detailed trunk-based development strategy and implementation guide.
 
 ## Environment Model
 
@@ -27,30 +31,46 @@ This document outlines the branching strategy for managing deployments across mu
 
 ### Primary Branches
 
-#### 1. `main` Branch (Trunk)
-- **Purpose**: Production-ready code (version n)
+#### 1. `main` Branch (Trunk) - PRIMARY STRATEGIC CAPABILITY
+
+- **Purpose**: Single source of truth, production-ready code (version n)
+- **Strategic Role**: Primary branch for all development - trunk-based development is our strategic capability
 - **Deploys to**: `BLD-stable-01` → `INT-stable-01` → `PRE-stable-01` → `PRD-stable-01`
 - **Protection**: Strict protection, requires PR reviews and CI/CD validation
 - **Merge Policy**: 
+  - ✅ **Feature branches** (PRIMARY: All features merge here iteratively)
   - ✅ Hotfixes (critical production fixes)
-  - ✅ Feature branches (trunk-based development for fast delivery)
-  - ✅ Release branch merges (when release/n+1 is ready for production)
-- **Trunk-Based Development**: Supports direct merges from feature branches for faster delivery
+  - ✅ Release branch merges (OPTIONAL: Only for coordinated releases when needed)
+- **Trunk-Based Development**: 
+  - ✅ All features developed iteratively through `main`
+  - ✅ Short-lived feature branches (hours to 1 day)
+  - ✅ Feature flags enable gradual rollout
+  - ✅ Continuous deployment on every merge
 - **Always Deployable**: `main` must always be in a deployable state
+- **Deployment Frequency**: Multiple times per day (continuous delivery)
 
-#### 2. `release/n+1` Branch (Beta)
-- **Purpose**: Next release development (version n+1)
+#### 2. `release/n+1` Branch (Beta) - OPTIONAL
+
+- **Purpose**: Optional branch for coordinated releases or extended beta testing
+- **When to Use**: Only when you need:
+  - Coordinated multi-service releases
+  - Extended beta testing periods
+  - Marketing/sales alignment for planned releases
 - **Deploys to**: `BLD-beta-*` → `INT-beta-*` → `PRE-beta-*`
 - **Protection**: Protected branch, requires PR reviews
-- **Merge Policy**: Feature branches targeting beta release
+- **Merge Policy**: Feature branches targeting beta release (rarely used)
 - **Naming**: `release/v1.2.0`, `release/2024-Q2`, or semantic versioning
+- **Note**: Most features should use trunk-based development instead
 
-#### 3. `release/n+2` Branch (Alpha)
-- **Purpose**: Future release development (version n+2)
+#### 3. `release/n+2` Branch (Alpha) - OPTIONAL
+
+- **Purpose**: Optional branch for experimental features requiring extended testing
+- **When to Use**: Only for experimental features that need isolation from production
 - **Deploys to**: `BLD-alpha-*` → `INT-alpha-*`
 - **Protection**: Protected branch, requires PR reviews
-- **Merge Policy**: Feature branches targeting alpha release
+- **Merge Policy**: Feature branches targeting alpha release (rarely used)
 - **Naming**: `release/v1.3.0`, `release/2024-Q3`, or semantic versioning
+- **Note**: Most experimental features can use trunk-based with feature flags instead
 
 ### Supporting Branches
 
@@ -62,20 +82,30 @@ This document outlines the branching strategy for managing deployments across mu
 - **Naming**: `hotfix/CORENGC-1234-critical-bug-fix`, `hotfix/CORENGC-5678-security-patch`
   - Format: `hotfix/CORENGC-xxxx-description` (Jira ID required)
 
-#### 5. `feature/*` Branches
-- **Purpose**: New feature development
-- **Source**: Can be created from `main` (trunk-based) or release branches (`release/n+1` or `release/n+2`)
-- **Flow Options**:
-  - **Fast Track (Trunk-Based)**: `main` → `feature/CORENGC-xxxx-feature-name` → `main` (via PR) → Production
-    - For: Small, production-ready features (< 1 day development)
-    - Enables faster delivery to production
-  - **Release Track**: `release/n+1` → `feature/CORENGC-xxxx-feature-name` → `release/n+1` (via PR) → Beta → Production
-    - For: Large features, experimental work, features needing extended testing
+#### 5. `feature/*` Branches - PRIMARY DEVELOPMENT METHOD
+
+- **Purpose**: New feature development (iterative, continuous delivery)
+- **Source**: **PRIMARY**: Always created from `main` (trunk-based development)
+- **Flow**: `main` → `feature/CORENGC-xxxx-feature-name` → `main` (via PR) → Production
+- **Strategic Approach**: 
+  - ✅ **All features** use trunk-based development
+  - ✅ Features are broken down into small, iterative PRs
+  - ✅ Each PR merges to `main` and deploys independently
+  - ✅ Feature flags control gradual rollout
+  - ✅ Large features are decomposed into multiple small PRs
+- **Lifetime**: Hours to 1 day maximum (short-lived branches)
+- **PR Size**: < 400 lines changed (ideally < 200 lines)
 - **Naming**: `feature/CORENGC-1234-user-authentication`, `feature/CORENGC-5678-payment-integration`
   - Format: `feature/CORENGC-xxxx-description` (Jira ID required)
-- **Lifetime**: 
-  - Trunk-based: Hours to 1 day (short-lived)
-  - Release-based: Days to weeks (longer-term)
+- **Decomposition Strategy**: 
+  - Large features are broken into multiple small PRs
+  - Each PR adds incremental value
+  - Each PR is independently deployable
+  - Feature flags hide incomplete features
+- **Optional Release Track**: 
+  - Only used for coordinated multi-service releases
+  - Flow: `release/n+1` → `feature/CORENGC-xxxx` → `release/n+1` → Beta → Production
+  - Rarely needed - trunk-based is preferred
 
 #### 6. `develop/*` Branches (Optional)
 - **Purpose**: Integration branch for multiple features before merging to release branch
