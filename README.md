@@ -6,12 +6,16 @@ This repository contains the branching strategy and implementation guides for ma
 
 ## 📚 Documentation
 
-### Strategic Capability
+### Strategic Capability & Decision Papers
+- **[DECISION_PAPER_BRANCHING_STRATEGY.md](./DECISION_PAPER_BRANCHING_STRATEGY.md)** ⭐ **EXECUTIVE** - Formal decision paper: Branching strategy for core banking platform microservices
 - **[TRUNK_BASED_STRATEGY.md](./TRUNK_BASED_STRATEGY.md)** ⭐ **PRIMARY** - Trunk-based development as strategic capability: continuous iterative delivery
+
+### Strategy Comparison & Analysis
+- **[BRANCHING_STRATEGIES_COMPARISON.md](./BRANCHING_STRATEGIES_COMPARISON.md)** ⭐ **COMPREHENSIVE** - Complete comparison: Trunk-Based, GitFlow, GitHub Flow, and Environment-Based strategies
+- **[TRUNK_VS_RELEASE_BRANCHES.md](./TRUNK_VS_RELEASE_BRANCHES.md)** - Deep analysis: Trunk-based vs Release branches with practical examples
 
 ### Core Documentation
 - **[BRANCHING_STRATEGY.md](./BRANCHING_STRATEGY.md)** - Comprehensive branching strategy document
-- **[TRUNK_VS_RELEASE_BRANCHES.md](./TRUNK_VS_RELEASE_BRANCHES.md)** - Deep analysis: Trunk-based vs Release branches with practical examples
 - **[TRUNK_BASED_DEVELOPMENT.md](./TRUNK_BASED_DEVELOPMENT.md)** - Trunk-based development integration guide
 
 ### Supporting Documentation
